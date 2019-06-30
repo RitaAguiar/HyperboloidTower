@@ -4,26 +4,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;DEFINIÇÕES
+;DEFINITIONS
 
-(define p (u0)) ;ponto base da torre
-(define r 0.1) ;raio dos cilindros estruturais
-(define rb 5.3) ;raio da base da torre
-(define rt 3) ;raio do topo da torre
-(define dfi (/ pi 2)) ;ângulo de diferença entre o topo e a base de cada cilindro estrutural
-(define n-cil 12) ;número de cilindros
-(define h-laje 0.3) ;altura da laje
-(define h 20) ; altura da torre
-(define n-deg 19) ;número de degraus por piso
-(define e-deg 0.2) ;espessura do degrau
-(define h-piso (* e-deg n-deg)) ;altura de cada piso
-(define n-pisos (exact-floor (/ (- h h-piso) h-piso))) ;número de pisos/plataformas da escada
-(define h-gua 1) ;altura da guarda
-(define r-gua 0.01) ;raio da guarda
-(define c 3) ;comprimento do degrau
-(define l 0.6) ;largura do degrau
-(define alfa 0) ;ângulo onde começa a escada
-(define dalfa (/ pi 18)) ;ângulo entre os degraus
+(define p (u0)) ;tower base point
+(define r 0.1) ;structural cylindrical columns radius
+(define rb 5.3) ;tower base radius
+(define rt 3) ;tower top radius
+(define dfi (/ pi 2)) ;structural cylindrical columns angle with top/base of the tower
+(define n-cyl 12) ;number of facade cylinders
+(define h-slab 0.3) ;height of the slabs
+(define h 20) ;total height of the tower 
+(define n-step 19) ;number of steps per floor
+(define t-step 0.2) ;steps thickness
+(define h-floor (* t-step n-step)) ;floors height
+(define n-floors (exact-floor (/ (- h h-floor) h-floor))) ;number of stair floors/platforms
+(define h-rail 1) ;handrail height
+(define r-rail 0.01) ;handrail radius
+(define l 3) ;steps length
+(define w 0.6) ;steps width
+(define alfa 0) ;stairs start angle
+(define dalfa (/ pi 18)) ;angle between steps
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -39,138 +39,138 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;FUNÇÕES
+;FUNCTIONS
 
-;faz a laje estrutural
+;structural slab
 
-(define (laje p r h-laje)
+(define (slab p r h-slab)
   (with-current-layer slab-layer
-    (cylinder p r (+z p h-laje))))
+    (cylinder p r (+z p h-slab))))
 
-;faz a coluna cilíndrica estrutural
+;cylindrical structural column
 
-(define (coluna p l h h-laje)
+(define (column p w h h-slab)
   (with-current-layer column-layer
-    (cylinder p (* 2 (/ l 3)) (+z p (- h h-laje)))))
+    (cylinder p (* 2 (/ w 3)) (+z p (- h h-slab)))))
 
-;faz os cilindros estruturais da torre
+;facade cylindrical columns
 
-(define (torre-hiperboloide r rb rt h dfi n-cil)
-  (define (par-cilindros fi)
+(define (hyperboloid-tower r rb rt h dfi n-cyl)
+  (define (cylinders-pair fi)
     (with-current-layer structure-layer
       (cylinder (+pol (u0) rb fi) r (+cyl (u0) rt (+ fi dfi) h))
       (cylinder (+pol (u0) rb fi) r (+cyl (u0) rt (- fi dfi) h))))
-  (map par-cilindros
-       (division 0 2pi n-cil #f)))
+  (map cylinders-pair
+       (division 0 2pi n-cyl #f)))
 
-;faz os degraus/cuboids das escadas com diferentes dimensões
+;spiral steps of the stairs
 
-(define (escada-caracol p c l e-deg alfa dalfa n-deg n-pisos n-piso)
-  (define (escada-rec z-d alfa-d c-d)
+(define (spiral-stair p l w t-step alfa dalfa n-step n-floors n-floor)
+  (define (stair-rec z-d alfa-d c-d)
     (define pt-i (+z p z-d))
     (with-current-layer stair-layer
-      (right-cuboid pt-i l e-deg (+pol pt-i c-d alfa-d))))
-  (map escada-rec
-       (division (/ e-deg 2) (* e-deg (- n-deg .5)) (- n-deg 1))
-       (division alfa (+ alfa (* dalfa (- n-deg 1))) (- n-deg 1))
-       (division (/ (* c (+ (- n-pisos n-piso) 2)) n-pisos)
-                 (/ (* c (+ (- n-pisos n-piso) 1)) n-pisos)
-                 (- n-deg 1))))
+      (right-cuboid pt-i w t-step (+pol pt-i c-d alfa-d))))
+  (map stair-rec
+       (division (/ t-step 2) (* t-step (- n-step .5)) (- n-step 1))
+       (division alfa (+ alfa (* dalfa (- n-step 1))) (- n-step 1))
+       (division (/ (* l (+ (- n-floors n-floor) 2)) n-floors)
+                 (/ (* l (+ (- n-floors n-floor) 1)) n-floors)
+                 (- n-step 1))))
 
-;faz os patamares das escadas com diferentes dimensões
+;platforms of the stairs
 
-(define (patamar p c e-deg h-laje n-deg n-piso)
-  (define h-piso (* e-deg n-deg))
-  (define c-pat (/ (* c (+ (- n-pisos n-piso) 1)) n-pisos))
+(define (platform p l t-step h-slab n-step n-floor)
+  (define h-floor (* t-step n-step))
+  (define l-plat (/ (* l (+ (- n-floors n-floor) 1)) n-floors))
   (with-current-layer platform-layer
     (subtraction
-     (cylinder (+z p h-piso) c-pat (+z p (+ h-piso h-laje)))
-     (box (+xz p (- c-pat) h-piso) (+xyz p c-pat c-pat (+ h-piso h-laje))))))
+     (cylinder (+z p h-floor) l-plat (+z p (+ h-floor h-slab)))
+     (box (+xz p (- l-plat) h-floor) (+xyz p l-plat l-plat (+ h-floor h-slab))))))
 
-;faz a guarda das escadas
+;handrails of the stairs
 
-(define (guarda p r z h-gua n-pisos n-piso)
+(define (handrail p r z h-rail n-floors n-floor)
   (define (pt ang z r-cir)
     #;(sphere (+cyl p r ang z) 0.05)
     #;(+cyl p r ang z)
     (with-current-layer posts-layer
-      (cylinder (+cyl p r-cir ang (+ z (/ e-deg 2)))
-                r-gua
-                (+cyl p r-cir ang (+ z h-gua)))
-      (cylinder (+cyl p r-cir ang (+ z h-gua))
-                r-gua
-                (+cyl p r-cir (+ ang dalfa) (+ z h-gua))))
+      (cylinder (+cyl p r-cir ang (+ z (/ t-step 2)))
+                r-rail
+                (+cyl p r-cir ang (+ z h-rail)))
+      (cylinder (+cyl p r-cir ang (+ z h-rail))
+                r-rail
+                (+cyl p r-cir (+ ang dalfa) (+ z h-rail))))
     #;(printf "ang = ~a\n" ang)
     #;(printf "z = ~a\n" z))
   (map pt
-       (division alfa (- (* n-deg dalfa) dalfa) (- n-deg 1))
-       (division h-laje (- (+ z h-laje) e-deg) (- n-deg 1))
-       (division (/ (* c (+ (- n-pisos n-piso) 2)) n-pisos)
-                 (/ (* c (+ (- n-pisos n-piso) 1)) n-pisos)
-                 (- n-deg 1)))
+       (division alfa (- (* n-step dalfa) dalfa) (- n-step 1))
+       (division h-slab (- (+ z h-slab) t-step) (- n-step 1))
+       (division (/ (* l (+ (- n-floors n-floor) 2)) n-floors)
+                 (/ (* l (+ (- n-floors n-floor) 1)) n-floors)
+                 (- n-step 1)))
   (map pt
-       (division (- (* n-deg dalfa) dalfa)
-                 (* 2 (- (* n-deg dalfa) dalfa))
-                 (- n-deg 1) #f)
-       (division (- (+ h-piso h-laje) e-deg)
-                 (- (+ h-piso h-laje) e-deg)
-                 (- n-deg 1) #f)
-       (division (/ (* c (+ (- n-pisos n-piso) 1)) n-pisos)
-                 (/ (* c (+ (- n-pisos n-piso) 1)) n-pisos)
-                 (- n-deg 1) #f)))
+       (division (- (* n-step dalfa) dalfa)
+                 (* 2 (- (* n-step dalfa) dalfa))
+                 (- n-step 1) #f)
+       (division (- (+ h-floor h-slab) t-step)
+                 (- (+ h-floor h-slab) t-step)
+                 (- n-step 1) #f)
+       (division (/ (* l (+ (- n-floors n-floor) 1)) n-floors)
+                 (/ (* l (+ (- n-floors n-floor) 1)) n-floors)
+                 (- n-step 1) #f)))
 
-;faz a guarda final das escadas
+;top handrail of the stairs
 
-(define (guarda-topo p ang c-piso h-gua n-pisos n-piso)
+(define (top-handrail p ang l-floor h-rail n-floors n-floor)
   (define dist (* 2 (sin (/ dalfa 2))))
-  (define c-gua (+ c-piso h-laje (- (/ e-deg 2))))
-  (define c-t-gua (+ c-piso h-gua (/ e-deg 2)))
+  (define l-rail (+ l-floor h-slab (- (/ t-step 2))))
+  (define l-t-rail (+ l-floor h-rail (/ t-step 2)))
   (define (pt r)
     (with-current-layer posts-layer
-      (cylinder (+cyl p r ang c-gua)
-                r-gua
-                (+cyl p r ang c-t-gua))
-      (cylinder (+cyl p r ang c-t-gua)
-                r-gua
-                (+cyl p (- r (* (/ (* c (+ (- n-pisos n-piso) 2)) n-pisos) dist)) ang c-t-gua))))
+      (cylinder (+cyl p r ang l-rail)
+                r-rail
+                (+cyl p r ang l-t-rail))
+      (cylinder (+cyl p r ang l-t-rail)
+                r-rail
+                (+cyl p (- r (* (/ (* l (+ (- n-floors n-floor) 2)) n-floors) dist)) ang l-t-rail))))
   (map pt
-       (division 0 (/ (* c (+ (- n-pisos n-piso) 2)) n-pisos)
+       (division 0 (/ (* l (+ (- n-floors n-floor) 2)) n-floors)
                  (exact-round (/ 1 dist)))))
 
-;faz as escadas e os patamares com diferentes dimensões segundo o número de pisos
+;recursion of the stairs, platflorms, and handrails
 
-(define (escada p c l e-deg h-laje alfa dalfa n-deg n-pisos)
-  (define h-piso (* e-deg n-deg))
-  (define (escada-rec n-piso)
-    (escada-caracol (+z p (+ h-laje (* h-piso n-piso)))
-                    c l e-deg alfa dalfa n-deg n-pisos n-piso))
-  (map escada-rec
-       (division 0 n-pisos n-pisos #f))
-  (define (patamar-rec n-piso)
-    (patamar (+z p (* h-piso n-piso))
-             c e-deg h-laje n-deg n-piso))
-  (map patamar-rec
-       (division 0 n-pisos n-pisos #f))
-  (define (guarda-rec n-piso)
-    (guarda (+z p (* h-piso n-piso))
-            c h-piso h-gua n-pisos n-piso))
-  (map guarda-rec
-       (division 0 n-pisos n-pisos #f))
-  (guarda-topo p alfa (* n-pisos h-piso) h-gua n-pisos n-pisos))
+(define (stair p l w t-step h-slab alfa dalfa n-step n-floors)
+  (define h-floor (* t-step n-step))
+  (define (stair-rec n-floor)
+    (spiral-stair (+z p (+ h-slab (* h-floor n-floor)))
+                    l w t-step alfa dalfa n-step n-floors n-floor))
+  (map stair-rec
+       (division 0 n-floors n-floors #f))
+  (define (platform-rec n-floor)
+    (platform (+z p (* h-floor n-floor))
+             l t-step h-slab n-step n-floor))
+  (map platform-rec
+       (division 0 n-floors n-floors #f))
+  (define (handrail-rec n-floor)
+    (handrail (+z p (* h-floor n-floor))
+            l h-floor h-rail n-floors n-floor))
+  (map handrail-rec
+       (division 0 n-floors n-floors #f))
+  (top-handrail p alfa (* n-floors h-floor) h-rail n-floors n-floors))
 
-;define a torre com todos os seus elementos
+;tower
 
-(define (torre)
-  (define h-piso (* e-deg n-deg))
-  (laje p rb h-laje)
-  (coluna p l h h-laje)
-  (escada p c l e-deg h-laje alfa dalfa n-deg n-pisos)
-  (laje (+z p (- h h-laje)) rt h-laje)
-  (torre-hiperboloide r rb rt h dfi n-cil))
+(define (tower)
+  (define h-floor (* t-step n-step))
+  (slab p rb h-slab)
+  (column p w h h-slab)
+  (stair p l w t-step h-slab alfa dalfa n-step n-floors)
+  (slab (+z p (- h h-slab)) rt h-slab)
+  (hyperboloid-tower r rb rt h dfi n-cyl))
 
-;pessoas
+;people
 
-(define (pessoa p)
+(define (person p)
   (with-current-layer person-layer
     (cone-frustum p 0.15 (+z p 0.2) 0.1)
     (cone-frustum (+z p 0.2) 0.1 (+z p 1.45) 0.2)
@@ -178,58 +178,29 @@
     (cylinder (+cyl p 0.225 pi 0.8) 0.04 (+cyl p 0.225 pi 1.4))
     (sphere (+z p 1.6) 0.125)))
 
-(define (pessoas)
-  (pessoa (xyz (/ c 2) (/ c 2) (+ (* 6 e-deg) (+ h-laje h-piso))))
-  (pessoa (xyz (/ c -3) (/ c -3) (+ h-laje (* (/ n-pisos 2) h-piso))))
-  (pessoa (xyz (/ c 4) (/ c -4) (+ h-laje (* n-pisos h-piso)))))
-
+(define (people)
+  (person (xyz (/ l 2) (/ l 2) (+ (* 6 t-step) (+ h-slab h-floor))))
+  (person (xyz (/ l -3) (/ l -3) (+ h-slab (* (/ n-floors 2) h-floor))))
+  (person (xyz (/ l 4) (/ l -4) (+ h-slab (* n-floors h-floor)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;EXECUÇÕES
+;EXECUTIONS
 
-; (delete-all-shapes)
-; (torre)
-; (pessoas)
-
+(delete-all-shapes)
+(tower)
+(people)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;RENDER
 
 (render-dir "D:\\Rita\\ADA\\Torre")
-;(render-size 1920 1080)
 (render-size 3840 2160)
 
-; ;frente
-; (view
-;   (xyz 0 -55.4129 14.3765)
-;   (xyz 0 -3.99189 9.57781)
-;   65.0)
-
-; ;trás
-; (view
-;  (xyz 0.0 55.8641 10.0)
-;  (xyz 0.0 0.0 10.0)
-;  65.0)
-
-; ;Bosque-2
-; (view
-;   (xyz -44.7577 -90.8815 76.6063)
-;   (xyz -7.77706 2.53597 8.84701)
-;   65.0)
-
-; ;Bosque-3
-; (view
-;   (xyz 0.0 -84.9649 4.30138)
-;   (xyz 0.0 37.7408 11.0359)
-;   65.0)
-
-;Bosque-5
 (view
   (xyz -5.2432 -86.6265 9.9545)
   (xyz -5.2432 37.7816 9.9545)
   65.0)
-(render-view "Torre-12")
 
-
+(render-view "HyperboloidTower")
