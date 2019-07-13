@@ -10,20 +10,20 @@ p = u0() #tower base point
 r = 0.1 #cylinders radius
 rb = 5.3 #tower base radius
 rt = 3 #tower top radius
-dfi = pi/2 #angle difference between top and base of cylinders
+d_fi = pi/2 #angle difference between top and base of cylinders
 n_cyl = 12 #number of cylinders
 h = 20  #tower height
 h_slab = 0.3 #slab height
 n_step = 19 #number of steps per floor
 e_step = 0.2 #step thickness
 h_floor = e_step * n_step #floor height
-n_floors = ceil((h - h_floor) / h_floor) #number of floors-platforms of stairs
+n_floors = floor((h - h_floor) / h_floor) #number of floors-platforms of stairs
 h_rail = 1 #handrail height
 r_rail = 0.01 #handrail radius
 l = 3 #steps length
 w = 0.6 #steps width
 alfa = 0 #start angle
-dalfa = pi/18 #angle between steps
+d_alfa = pi/18 #angle between steps
 
 #LAYERS
 
@@ -53,23 +53,23 @@ def central_column(p, w, h, h_slab):
 
 #tower cylinders
 
-def hyperboloid():
+def hyperboloid(r, rb, rt, h, d_fi, n_cyl):
     def pair_cylinders(fi):
         with current_layer(structure_layer):
-            cylinder(p + vpol(rb, fi), r, p + vcyl(rt , fi + dfi, h))
-            cylinder(p + vpol(rb, fi), r, p + vcyl(rt , fi - dfi, h))
+            cylinder(p + vpol(rb, fi), r, p + vcyl(rt , fi + d_fi, h))
+            cylinder(p + vpol(rb, fi), r, p + vcyl(rt , fi - d_fi, h))
     map(pair_cylinders, division(0, 2*pi, n_cyl, False))
 
 #stair steps with different dimensions
 
-def spiral_stair(p, l, w, e_step, alfa, dalfa, n_steps, n_floors, n_floor):
+def spiral_stair(p, l, w, e_step, alfa, d_alfa, n_steps, n_floors, n_floor):
     def stair_rec(z_d, alfa_d, l_d):
         pt_i = p + vz(z_d)
         with current_layer(stair_layer):
             right_cuboid(pt_i, w, e_step, pt_i + vpol(l_d, alfa_d))
     map(stair_rec,
         division(e_step/2, e_step*(n_step - 0.5), n_step - 1),
-        division(alfa, alfa + dalfa * (n_step - 1), n_step - 1),
+        division(alfa, alfa + d_alfa * (n_step - 1), n_step - 1),
         division(l*(n_floors - n_floor + 2)/n_floors, l*(n_floors - n_floor + 1)/n_floors, n_step - 1)
         )
 
@@ -93,16 +93,16 @@ def handrail(p, r, z, h_rail, n_floors, n_floor):
                 p + vcyl(r_cir, ang, z + h_rail))
             cylinder(p + vcyl(r_cir, ang, z + h_rail),
                     r_rail,
-                    p + vcyl(r_cir, ang + dalfa, z + h_rail))
+                    p + vcyl(r_cir, ang + d_alfa, z + h_rail))
     map(pt,
-        division(alfa, n_step*dalfa - dalfa, n_step - 1),
+        division(alfa, n_step*d_alfa - d_alfa, n_step - 1),
         division(h_slab, z + h_slab - e_step, n_step - 1),
         division(l*(n_floors - n_floor + 2)/n_floors,
              l*(n_floors - n_floor + 1)/n_floors,
              n_step - 1))
     map(pt,
-        division(n_step*dalfa - dalfa,
-                 2*(n_step*dalfa - dalfa),
+        division(n_step*d_alfa - d_alfa,
+                 2*(n_step*d_alfa - d_alfa),
                  n_step - 1, False),
         division(h_floor + h_slab - e_step,
                  h_floor + h_slab - e_step,
@@ -114,7 +114,7 @@ def handrail(p, r, z, h_rail, n_floors, n_floor):
 #last stair handrail
 
 def top_handrail(p, ang, l_floor, h_rail, n_floors, n_floor):
-    dist = 2*sin(dalfa/2)
+    dist = 2*sin(d_alfa/2)
     l_rail = l_floor + h_slab - e_step/2
     l_t_rail = l_floor + h_rail + e_step/2
     def pt(r):
@@ -129,10 +129,10 @@ def top_handrail(p, ang, l_floor, h_rail, n_floors, n_floor):
 
 #stairs with platforms
 
-def stair(p, l, w, e_step, h_slab, alfa, dalfa, n_step, n_floors):
+def stair(p, l, w, e_step, h_slab, alfa, d_alfa, n_step, n_floors):
     h_floor = e_step*n_step
     def stair_rec(n_floor):
-        spiral_stair(p + vz(h_slab + h_floor*n_floor), l, w, e_step, alfa, dalfa, n_step, n_floors, n_floor)
+        spiral_stair(p + vz(h_slab + h_floor*n_floor), l, w, e_step, alfa, d_alfa, n_step, n_floors, n_floor)
     map(stair_rec,
     division(0, n_floors, n_floors, False))
     def platform_rec(n_floor):
@@ -151,9 +151,9 @@ def hyperboloid_tower():
     h_floor = e_step*n_step
     slab(p, rb, h_slab)
     central_column(p, w, h, h_slab)
-    stair(p, l, w, e_step, h_slab, alfa, dalfa, n_step, n_floors)
+    stair(p, l, w, e_step, h_slab, alfa, d_alfa, n_step, n_floors)
     slab(p + vz(h - h_slab), rt, h_slab)
-    hyperboloid()
+    hyperboloid(r, rb, rt, h, d_fi, n_cyl)
 
 #--------------------------------#
 
